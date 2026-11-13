@@ -102,15 +102,17 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await status.edit_text("Не получилось создать разбор. Проверь переменную OPENAI_API_KEY в настройках Render.")
 
 def main():
-    if not PUBLIC_HOST:
-        raise RuntimeError("Render did not provide RENDER_EXTERNAL_HOSTNAME. Deploy this service as a Render Web Service.")
+    
     app = Application.builder().token(BOT_TOKEN).build()
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("help", help_command))
     app.add_handler(CommandHandler("chart", begin_chart))
     app.add_handler(CommandHandler("cancel", cancel))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
-    app.run_webhook(
+
+    print("ASTRA bot is running...")
+    app.run_polling(drop_pending_updates=True)
+
         listen="0.0.0.0",
         port=PORT,
         url_path=WEBHOOK_PATH,
