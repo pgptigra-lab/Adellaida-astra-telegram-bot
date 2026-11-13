@@ -99,7 +99,7 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await status.delete()
     except Exception:
         logger.exception("Failed to generate natal reading")
-        await status.edit_text("Не получилось создать разбор. Проверь переменную OPENAI_API_KEY в настройках Render.")
+        await status.edit_text("Не получилось создать разбор. Проверь переменную OPENAI_API_KEY в настройках Railway.")
 
 def main():
     
@@ -113,13 +113,6 @@ def main():
     print("ASTRA bot is running...")
     app.run_polling(drop_pending_updates=True)
 
-        listen="0.0.0.0",
-        port=PORT,
-        url_path=WEBHOOK_PATH,
-        webhook_url=f"https://{PUBLIC_HOST}/{WEBHOOK_PATH}",
-        secret_token=WEBHOOK_SECRET,
-        drop_pending_updates=True,
-    )
 
 if __name__ == "__main__":
     main()
