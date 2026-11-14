@@ -292,13 +292,30 @@ def aspect_placement_context(result, planet):
     )
 
 
-def aspect_chart_context(result, first, second):
-    first_context = aspect_placement_context(result, first)
-    second_context = aspect_placement_context(result, second)
+def aspect_chart_context(result, first, aspect, second):
+    """Связывает значение аспекта с реальными знаками и домами этой карты."""
+    first_sign = result["positions"][first][0]
+    second_sign = result["positions"][second][0]
+    first_house = find_house(result["longitudes"][first], result["cusp_longitudes"])
+    second_house = find_house(result["longitudes"][second], result["cusp_longitudes"])
+
+    aspect_links = {
+        "соединение": "тесно переплетаются",
+        "секстиль": "могут сотрудничать, если человек сознательно использует эту возможность",
+        "квадрат": "могут создавать напряжение и требовать согласования",
+        "трин": "естественно поддерживают друг друга",
+        "оппозиция": "могут тянуть в разные стороны и требуют поиска равновесия",
+    }
+    relation = aspect_links[aspect]
+
     return (
-        f"В этой карте: {first_context}; {second_context}. "
-        "Поэтому тема аспекта может особенно заметно проявляться именно "
-        "в пересечении этих двух жизненных сфер."
+        f"Персональный акцент карты: {first} в {SIGN_IN_CASE[first_sign]} "
+        f"проявляет тему через {SIGN_STYLES[first_sign]} в сфере "
+        f"{HOUSE_THEMES[first_house]}, а {second} в {SIGN_IN_CASE[second_sign]} "
+        f"— через {SIGN_STYLES[second_sign]} в сфере {HOUSE_THEMES[second_house]}. "
+        f"В этом аспекте эти способы и жизненные области {relation}. "
+        "Практический смысл связи можно искать в том, как решения в одной сфере "
+        "отражаются на другой."
     )
 
 
@@ -450,7 +467,7 @@ def format_aspect_interpretations(result):
             f"✦ {first} — {aspect} — {second} (орбис {orb}°)",
             f"Связаны темы: {first_theme} и {second_theme}.",
             pair_note or aspect_pair_note(first, second),
-            aspect_chart_context(result, first, second),
+            aspect_chart_context(result, first, aspect, second),
         ])
         if not pair_note:
             lines.extend([meaning, strengths, f"Практический ориентир: {advice}"])
