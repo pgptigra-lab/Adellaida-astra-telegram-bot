@@ -139,7 +139,8 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     status = await update.message.reply_text("🔭 Рассчитываю натальную карту. Это может занять несколько секунд.")
     try:
         result = await asyncio.to_thread(calculate_natal_chart, birth_date, birth_time, birth_place)
-        answer = format_natal_chart(result, birth_date, birth_time, birth_place)\n        answer += format_interpretations(result)
+        answer = format_natal_chart(result, birth_date, birth_time, birth_place)
+        answer += format_interpretations(result)
         for start in range(0, len(answer), 3900):
             await update.message.reply_text(answer[start:start + 3900], reply_markup=MENU)
     except Exception as exc:
