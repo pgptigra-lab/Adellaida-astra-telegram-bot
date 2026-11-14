@@ -1,1 +1,4 @@
-python-telegram-bot>=21.0,<23.0\npyswisseph>=2.10.3.2\ngeopy>=2.4.1\ntimezonefinder>=6.5.2\n
+python-telegram-bot>=21.0,<23.0
+pyswisseph>=2.10.3.2
+geopy>=2.4.1
+timezonefinder>=6.5.2
