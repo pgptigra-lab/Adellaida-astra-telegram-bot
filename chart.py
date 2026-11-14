@@ -180,7 +180,7 @@ def find_house(longitude, cusp_longitudes):
         end = cusp_longitudes[(index + 1) % len(cusp_longitudes)]
         span = (end - start) % 360
         offset = (value - start) % 360
-        if offset < span or abs(offset - span) < 1e-8:
+        if offset < span:
             return index + 1
     return 12
 
@@ -202,4 +202,4 @@ def format_interpretations(result):
         "",
         "Примечание: астрологические трактовки символические; воспринимай их как повод для размышления, а не как установленный факт о себе.",
     ])
-    return "\\n".join(lines)
+    return "\n".join(lines)
