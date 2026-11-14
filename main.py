@@ -44,7 +44,7 @@ def parse_birth_date(message):
             continue
         values = [int(value) for value in match.groups()]
         try:
-            if pattern.startswith("(\\\d{4})"):
+            if len(match.group(1)) == 4:
                 return datetime(values[0], values[1], values[2]).date()
             return datetime(values[2], values[1], values[0]).date()
         except ValueError:
