@@ -7,7 +7,7 @@ from datetime import datetime, time
 from telegram import Update, ReplyKeyboardMarkup
 from telegram.ext import Application, CommandHandler, MessageHandler, ContextTypes, filters
 
-from chart import calculate_natal_chart, format_natal_chart, format_interpretations, format_aspect_interpretations
+from chart import calculate_natal_chart, format_natal_chart, format_interpretations, format_aspect_interpretations, format_psychological_portrait
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -142,6 +142,7 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         answer = format_natal_chart(result, birth_date, birth_time, birth_place)
         answer += format_interpretations(result)
         answer += format_aspect_interpretations(result)
+        answer += format_psychological_portrait(result)
         for start in range(0, len(answer), 3900):
             await update.message.reply_text(answer[start:start + 3900], reply_markup=MENU)
     except Exception as exc:
