@@ -282,6 +282,26 @@ def aspect_pair_note(first, second):
     )
 
 
+def aspect_placement_context(result, planet):
+    """Кратко описывает, через какие знак и дом проявляется тема планеты."""
+    sign = result["positions"][planet][0]
+    house = find_house(result["longitudes"][planet], result["cusp_longitudes"])
+    return (
+        f"{planet} в {SIGN_IN_CASE[sign]}, в {house}-м доме "
+        f"(стиль: {SIGN_STYLES[sign]}; сфера: {HOUSE_THEMES[house]})"
+    )
+
+
+def aspect_chart_context(result, first, second):
+    first_context = aspect_placement_context(result, first)
+    second_context = aspect_placement_context(result, second)
+    return (
+        f"В этой карте: {first_context}; {second_context}. "
+        "Поэтому тема аспекта может особенно заметно проявляться именно "
+        "в пересечении этих двух жизненных сфер."
+    )
+
+
 ASPECT_INTERPRETATIONS = {
     "соединение": (
         "Энергии двух планет тесно переплетены и часто действуют вместе.",
@@ -430,6 +450,7 @@ def format_aspect_interpretations(result):
             f"✦ {first} — {aspect} — {second} (орбис {orb}°)",
             f"Связаны темы: {first_theme} и {second_theme}.",
             pair_note or aspect_pair_note(first, second),
+            aspect_chart_context(result, first, second),
         ])
         if not pair_note:
             lines.extend([meaning, strengths, f"Практический ориентир: {advice}"])
