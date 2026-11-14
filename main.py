@@ -13,7 +13,7 @@ BOT_TOKEN = os.environ["TELEGRAM_BOT_TOKEN"]
 MENU = ReplyKeyboardMarkup([["✨ Натальная карта", "ℹ️ О проекте"]], resize_keyboard=True)
 
 WELCOME = (
-    "✨ Добро пожаловать в ASTRA — пространство астрологии и самопознания.\\n\\n"
+    "✨ Добро пожаловать в ASTRA — пространство астрологии и самопознания.\n\n"
     "Я помогу подготовить символический разбор по дате рождения. "
     "Для начала нажми «Натальная карта»."
 )
@@ -35,8 +35,8 @@ SIGN_INFO = [
 
 def parse_birth_date(message):
     patterns = [
-        r"(\\d{4})-(\\d{1,2})-(\\d{1,2})",
-        r"(\\d{1,2})[./-](\\d{1,2})[./-](\\d{4})",
+        r"(\d{4})-(\d{1,2})-(\d{1,2})",
+        r"(\d{1,2})[./-](\d{1,2})[./-](\d{4})",
     ]
     for pattern in patterns:
         match = re.search(pattern, message)
@@ -44,7 +44,7 @@ def parse_birth_date(message):
             continue
         values = [int(value) for value in match.groups()]
         try:
-            if pattern.startswith("(\\\\d{4})"):
+            if pattern.startswith("(\\\d{4})"):
                 return datetime(values[0], values[1], values[2]).date()
             return datetime(values[2], values[1], values[0]).date()
         except ValueError:
@@ -65,24 +65,24 @@ def zodiac_for(day, month):
 def make_reading(birth_date):
     sign, strengths, challenges, question = zodiac_for(birth_date.day, birth_date.month)
     return (
-        f"🌙 ASTRA — предварительный символический разбор\\n"
-        f"Твоя дата рождения: {birth_date.strftime('%d.%m.%Y')}\\n"
-        f"Солнечный знак: {sign}\\n\\n"
-        f"✨ **Общее впечатление**\\n"
+        f"🌙 ASTRA — предварительный символический разбор\n"
+        f"Твоя дата рождения: {birth_date.strftime('%d.%m.%Y')}\n"
+        f"Солнечный знак: {sign}\n\n"
+        f"✨ **Общее впечатление**\n"
         f"В астрологической традиции {sign} связывают с такими качествами, как {strengths}. "
-        f"Это темы для самонаблюдения, а не фиксированное описание твоего характера.\\n\\n"
-        f"💎 **Возможные сильные стороны**\\n"
+        f"Это темы для самонаблюдения, а не фиксированное описание твоего характера.\n\n"
+        f"💎 **Возможные сильные стороны**\n"
         f"Полезно обратить внимание на ситуации, где проявляются {strengths}. "
-        f"Подумай, какие из этих качеств действительно знакомы тебе по жизненному опыту.\\n\\n"
-        f"🌱 **Зоны роста**\\n"
+        f"Подумай, какие из этих качеств действительно знакомы тебе по жизненному опыту.\n\n"
+        f"🌱 **Зоны роста**\n"
         f"Символические сложности этого знака — {challenges}. "
-        f"Это не недостатки и не предсказание, а возможные темы для размышления.\\n\\n"
-        f"❤️ **Отношения и общение**\\n"
-        f"Попробуй замечать, как ты выражаешь свои потребности, слушаешь близких и сохраняешь личные границы.\\n\\n"
-        f"🎯 **Работа и самореализация**\\n"
+        f"Это не недостатки и не предсказание, а возможные темы для размышления.\n\n"
+        f"❤️ **Отношения и общение**\n"
+        f"Попробуй замечать, как ты выражаешь свои потребности, слушаешь близких и сохраняешь личные границы.\n\n"
+        f"🎯 **Работа и самореализация**\n"
         f"Опирайся на реальные навыки и интересы. Астрологический символ может быть поводом подумать, "
-        f"какие задачи дают тебе энергию и ощущение смысла.\\n\\n"
-        f"❓ **Вопрос для размышления**\\n{question}\\n\\n"
+        f"какие задачи дают тебе энергию и ощущение смысла.\n\n"
+        f"❓ **Вопрос для размышления**\n{question}\n\n"
         f"ℹ️ Сейчас ASTRA определяет только солнечный знак по дате. Время и место рождения пока не "
         f"рассчитываются; Луна, Асцендент, дома и аспекты не определены. Астрология не является "
         f"научно подтверждённым методом описания личности или предсказания будущего."
@@ -135,20 +135,17 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     context.user_data["awaiting_birth_details"] = False
-    status = await update.message.reply_text("🌙 ASTRA готовит твой разбор…")
-    try:
-        response = await client.responses.create(
-            model=MODEL,
-            instructions=SYSTEM_PROMPT,
-            input=f"Данные рождения пользователя:\n{text}\n\nСоставь предварительный разбор и обозначь ограничения точности.",
+    birth_date = parse_birth_date(text)
+    if birth_date is None:
+        await update.message.reply_text(
+            "Не удалось распознать дату. Напиши её, например: 15.05.1989 или 1989-05-15."
         )
-        answer = response.output_text.strip() or "Не удалось подготовить разбор. Попробуй /chart."
-        for i in range(0, len(answer), 3900):
-            await update.message.reply_text(answer[i:i + 3900], reply_markup=MENU)
-        await status.delete()
-    except Exception:
-        logger.exception("Failed to generate natal reading")
-        await status.edit_text("Не получилось создать разбор. Проверь переменную OPENAI_API_KEY в настройках Railway.")
+        context.user_data["awaiting_birth_details"] = True
+        return
+
+    context.user_data["awaiting_birth_details"] = False
+    answer = make_reading(birth_date)
+    await update.message.reply_text(answer, reply_markup=MENU)
 
 def main():
     
