@@ -1,10 +1,13 @@
+import asyncio
 import logging
 import os
 import re
-from datetime import datetime
+from datetime import datetime, time
 
 from telegram import Update, ReplyKeyboardMarkup
 from telegram.ext import Application, CommandHandler, MessageHandler, ContextTypes, filters
+
+from chart import calculate_natal_chart, format_natal_chart
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -14,24 +17,10 @@ MENU = ReplyKeyboardMarkup([["✨ Натальная карта", "ℹ️ О п�
 
 WELCOME = (
     "✨ Добро пожаловать в ASTRA — пространство астрологии и самопознания.\n\n"
-    "Я помогу подготовить символический разбор по дате рождения. "
+    "Я могу рассчитать астрологическую натальную карту по дате, времени и месту рождения. "
     "Для начала нажми «Натальная карта»."
 )
 
-SIGN_INFO = [
-    ((3, 21), (4, 19), "Овен", "инициативность, смелость и стремление действовать", "импульсивность и нетерпение", "Где можно проявить инициативу, не торопя события?"),
-    ((4, 20), (5, 20), "Телец", "устойчивость, практичность и верность своим ценностям", "упрямство и сопротивление переменам", "Что даёт тебе чувство устойчивости, а где полезно быть гибче?"),
-    ((5, 21), (6, 20), "Близнецы", "любознательность, общение и быстрая адаптация", "рассеянность и избыток впечатлений", "Какие знания и разговоры сейчас действительно важны?"),
-    ((6, 21), (7, 22), "Рак", "чуткость, забота и глубокая связь с близкими", "закрытость и повышенная чувствительность", "Как заботиться о других, не забывая о собственных границах?"),
-    ((7, 23), (8, 22), "Лев", "творчество, щедрость и желание вдохновлять", "гордость и зависимость от признания", "Где ты можешь проявить себя искренне, не ожидая одобрения?"),
-    ((8, 23), (9, 22), "Дева", "внимание к деталям, надёжность и аналитический подход", "перфекционизм и чрезмерная самокритика", "Что уже достаточно хорошо, даже если не идеально?"),
-    ((9, 23), (10, 22), "Весы", "дипломатичность, чувство гармонии и партнёрство", "нерешительность и стремление всем угодить", "Какое решение будет честным прежде всего по отношению к себе?"),
-    ((10, 23), (11, 21), "Скорпион", "глубина, настойчивость и способность к внутренним переменам", "подозрительность и стремление всё контролировать", "Что можно отпустить, чтобы освободить место для нового?"),
-    ((11, 22), (12, 21), "Стрелец", "оптимизм, открытость и тяга к развитию", "нетерпение и обещания без плана", "Как превратить большую идею в один конкретный шаг?"),
-    ((12, 22), (1, 19), "Козерог", "ответственность, выдержка и умение строить долгосрочные планы", "излишняя строгость к себе и трудность отдыха", "Как двигаться к цели, сохраняя силы и радость жизни?"),
-    ((1, 20), (2, 18), "Водолей", "независимость, оригинальность и интерес к новым идеям", "отстранённость и упрямство во взглядах", "Какая необычная идея заслуживает спокойной проверки?"),
-    ((2, 19), (3, 20), "Рыбы", "воображение, эмпатия и тонкое восприятие", "уход от сложностей и размытые границы", "Как соединить интуицию с практическими действиями?"),
-]
 
 def parse_birth_date(message):
     patterns = [
@@ -51,73 +40,68 @@ def parse_birth_date(message):
             return None
     return None
 
-def zodiac_for(day, month):
-    value = (month, day)
-    for start, finish, name, strengths, challenges, question in SIGN_INFO:
-        if start <= finish:
-            inside = start <= value <= finish
-        else:
-            inside = value >= start or value <= finish
-        if inside:
-            return name, strengths, challenges, question
-    return None
 
-def make_reading(birth_date):
-    sign, strengths, challenges, question = zodiac_for(birth_date.day, birth_date.month)
-    return (
-        f"🌙 ASTRA — предварительный символический разбор\n"
-        f"Твоя дата рождения: {birth_date.strftime('%d.%m.%Y')}\n"
-        f"Солнечный знак: {sign}\n\n"
-        f"✨ **Общее впечатление**\n"
-        f"В астрологической традиции {sign} связывают с такими качествами, как {strengths}. "
-        f"Это темы для самонаблюдения, а не фиксированное описание твоего характера.\n\n"
-        f"💎 **Возможные сильные стороны**\n"
-        f"Полезно обратить внимание на ситуации, где проявляются {strengths}. "
-        f"Подумай, какие из этих качеств действительно знакомы тебе по жизненному опыту.\n\n"
-        f"🌱 **Зоны роста**\n"
-        f"Символические сложности этого знака — {challenges}. "
-        f"Это не недостатки и не предсказание, а возможные темы для размышления.\n\n"
-        f"❤️ **Отношения и общение**\n"
-        f"Попробуй замечать, как ты выражаешь свои потребности, слушаешь близких и сохраняешь личные границы.\n\n"
-        f"🎯 **Работа и самореализация**\n"
-        f"Опирайся на реальные навыки и интересы. Астрологический символ может быть поводом подумать, "
-        f"какие задачи дают тебе энергию и ощущение смысла.\n\n"
-        f"❓ **Вопрос для размышления**\n{question}\n\n"
-        f"ℹ️ Сейчас ASTRA определяет только солнечный знак по дате. Время и место рождения пока не "
-        f"рассчитываются; Луна, Асцендент, дома и аспекты не определены. Астрология не является "
-        f"научно подтверждённым методом описания личности или предсказания будущего."
-    )
+def parse_birth_time(message):
+    match = re.search(r"(?:время|time)\s*[:=\-]?\s*(\d{1,2}:\d{2})", message, re.IGNORECASE)
+    if not match:
+        return None
+    try:
+        hour, minute = map(int, match.group(1).split(":"))
+        return time(hour, minute)
+    except ValueError:
+        return None
+
+
+def parse_birth_place(message):
+    match = re.search(r"(?:место|город|place|city)\s*[:=\-]?\s*([^\n]+)", message, re.IGNORECASE)
+    if not match:
+        return None
+    place = match.group(1).strip()
+    if place.lower() in {"не знаю", "неизвестно", "unknown", "не указано"}:
+        return None
+    return place[:160]
+
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data.clear()
     await update.message.reply_text(WELCOME, reply_markup=MENU)
 
+
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
-        "Команды:\n/start — начать заново\n/chart — создать разбор\n"
+        "Команды:\n/start — начать заново\n/chart — создать натальную карту\n"
         "/cancel — отменить ввод\n\n"
-        "Для разбора понадобятся дата рождения, время рождения и город/страна."
+        "Для полной карты нужны дата, точное местное время и город/страна рождения."
     )
+
 
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data.clear()
-    await update.message.reply_text("Ввод отменён. Когда будешь готов(а), нажми «Натальная карта».", reply_markup=MENU)
+    await update.message.reply_text(
+        "Ввод отменён. Когда будешь готов(а), нажми «Натальная карта».",
+        reply_markup=MENU,
+    )
+
 
 async def begin_chart(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data["awaiting_birth_details"] = True
     await update.message.reply_text(
-        "Напиши данные одним сообщением в таком формате:\n\n"
-        "Дата: 15.05.1989\nВремя: 07:30 (если неизвестно — так и напиши)\n"
+        "Пришли данные одним сообщением в таком формате:\n\n"
+        "Дата: 15.05.1989\n"
+        "Время: 07:30\n"
         "Место: Кишинёв, Молдова\n\n"
-        "Укажи местное время рождения. Не отправляй личные документы или адрес."
+        "Укажи местное время рождения. Если точное время неизвестно, полную карту "
+        "с Асцендентом и домами рассчитать нельзя. Не отправляй личные документы или адрес."
     )
+
 
 async def about(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
-        "ASTRA — астрологический проект для самопознания. Материалы носят "
-        "развлекательный и рефлексивный характер: астрология не является научно "
-        "подтверждённым способом описания личности или предсказания будущего."
+        "ASTRA — астрологический проект для самопознания. Расчёты показывают положения "
+        "небесных тел; астрологические трактовки носят развлекательный и рефлексивный "
+        "характер и не являются научно подтверждённым описанием личности или прогнозом."
     )
+
 
 async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = (update.message.text or "").strip()
@@ -134,28 +118,52 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("Сообщение слишком длинное. Пришли только дату, время и место рождения.")
         return
 
-    context.user_data["awaiting_birth_details"] = False
     birth_date = parse_birth_date(text)
+    birth_time = parse_birth_time(text)
+    birth_place = parse_birth_place(text)
+    missing = []
     if birth_date is None:
+        missing.append("дату (например, 15.05.1989)")
+    if birth_time is None:
+        missing.append("время (например, 07:30)")
+    if birth_place is None:
+        missing.append("город и страну")
+    if missing:
         await update.message.reply_text(
-            "Не удалось распознать дату. Напиши её, например: 15.05.1989 или 1989-05-15."
+            "Не хватает или не удалось распознать: " + ", ".join(missing) +
+            ".\nПришли все три пункта одним сообщением. Для отмены введи /cancel."
         )
-        context.user_data["awaiting_birth_details"] = True
         return
 
     context.user_data["awaiting_birth_details"] = False
-    answer = make_reading(birth_date)
-    await update.message.reply_text(answer, reply_markup=MENU)
+    status = await update.message.reply_text("🔭 Рассчитываю натальную карту. Это может занять несколько секунд.")
+    try:
+        result = await asyncio.to_thread(calculate_natal_chart, birth_date, birth_time, birth_place)
+        answer = format_natal_chart(result, birth_date, birth_time, birth_place)
+        for start in range(0, len(answer), 3900):
+            await update.message.reply_text(answer[start:start + 3900], reply_markup=MENU)
+    except Exception as exc:
+        logger.exception("Natal chart calculation failed")
+        context.user_data["awaiting_birth_details"] = True
+        await update.message.reply_text(
+            f"Не получилось рассчитать карту: {exc}\n"
+            "Проверь написание города и попробуй ещё раз. Для отмены введи /cancel.",
+            reply_markup=MENU,
+        )
+    finally:
+        try:
+            await status.delete()
+        except Exception:
+            pass
+
 
 def main():
-    
     app = Application.builder().token(BOT_TOKEN).build()
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("help", help_command))
     app.add_handler(CommandHandler("chart", begin_chart))
     app.add_handler(CommandHandler("cancel", cancel))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
-
     print("ASTRA bot is running...")
     app.run_polling(drop_pending_updates=True)
 
