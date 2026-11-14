@@ -251,7 +251,7 @@ def format_aspect_interpretations(result):
     lines = ["", "🔗 ЧТО ОЗНАЧАЮТ АСПЕКТЫ"]
     if not result["aspects"]:
         lines.append("В этой карте нет аспектов из выбранного набора с заданными орбисами.")
-        return "\\n".join(lines)
+        return "\n".join(lines)
 
     for first, aspect, second, orb in result["aspects"]:
         meaning, strengths, advice = ASPECT_INTERPRETATIONS[aspect]
@@ -270,4 +270,4 @@ def format_aspect_interpretations(result):
         "",
         "Важно: это общие символические значения аспектов. Их смысл зависит также от знаков, домов и всей карты; это не научная оценка личности и не прогноз.",
     ])
-    return "\\n".join(lines)
+    return "\n".join(lines)
