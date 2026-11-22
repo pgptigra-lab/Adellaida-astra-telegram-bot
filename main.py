@@ -4,11 +4,22 @@ import os
 import re
 from datetime import datetime, time
 
-from telegram import Update, ReplyKeyboardMarkup
-from telegram.ext import Application, CommandHandler, MessageHandler, ContextTypes, filters
+from telegram import Update, ReplyKeyboardMarkup, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.ext import Application, CommandHandler, MessageHandler, CallbackQueryHandler, ContextTypes, filters
 
 from chart import calculate_natal_chart, format_natal_chart, format_interpretations, format_aspect_interpretations, format_psychological_portrait
 
+LANGUAGES = {
+    "ru": "🇷🇺 Русский",
+    "th": "🇹🇭 ไทย",
+    "en": "🇬🇧 English",
+}
+
+TEXTS = {
+    "ru": "Выбери язык:",
+    "th": "กรุณาเลือกภาษา:",
+    "en": "Please choose your language:",
+}
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -64,10 +75,34 @@ def parse_birth_place(message):
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data.clear()
-    await update.message.reply_text(WELCOME, reply_markup=MENU)
 
+    keyboard = [
+        [InlineKeyboardButton("🇷🇺 Русский", callback_data="lang_ru")],
+        [InlineKeyboardButton("🇹🇭 ไทย", callback_data="lang_th")],
+        [InlineKeyboardButton("🇬🇧 English", callback_data="lang_en")],
+    ]
 
-async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
+    await update.message.reply_text(
+        "Выбери язык / Choose language / เลือกภาษา:",
+        reply_markup=reply_markup
+    )
+
+async def select_language(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    language = query.data.replace("lang_", "")
+    context.user_data["language"] = language
+
+    messages = {
+        "ru": "🇷🇺 Отлично! Язык выбран. Добро пожаловать в ASTRA!",
+        "th": "🇹🇭 ยินดีต้อนรับสู่ ASTRA! เลือกภาษาไทยแล้ว",
+        "en": "🇬🇧 Welcome to ASTRA! English selected.",
+    }
+
+    await query.edit_message_text(messages[language])async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         "Команды:\n/start — начать заново\n/chart — создать натальную карту\n"
         "/cancel — отменить ввод\n\n"
@@ -163,6 +198,7 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
 def main():
     app = Application.builder().token(BOT_TOKEN).build()
     app.add_handler(CommandHandler("start", start))
+    app.add_handler(CallbackQueryHandler(select_language, pattern="^lang_"))
     app.add_handler(CommandHandler("help", help_command))
     app.add_handler(CommandHandler("chart", begin_chart))
     app.add_handler(CommandHandler("cancel", cancel))
