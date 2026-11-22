@@ -86,7 +86,7 @@ def parse_birth_date(message):
 
 
 def parse_birth_time(message):
-    match = re.search(r"(?:время|time)\s*[:=\-]?\s*(\d{1,2}:\d{2})", message, re.IGNORECASE)
+    match = re.search(r"(?:время|time|เวลา)\s*[:=\-]?\s*(\d{1,2}:\d{2})", message, re.IGNORECASE)
     if not match:
         return None
     try:
@@ -97,7 +97,7 @@ def parse_birth_time(message):
 
 
 def parse_birth_place(message):
-    match = re.search(r"(?:место|город|place|city)\s*[:=\-]?\s*([^\n]+)", message, re.IGNORECASE)
+    match = re.search(r"(?:место|город|place|city|สถานที่|เมือง)\s*[:=\-]?\s*([^\n]+)", message, re.IGNORECASE)
     if not match:
         return None
     place = match.group(1).strip()
@@ -176,7 +176,8 @@ async def about(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = (update.message.text or "").strip()
-    ui = UI[language_of(context)]\n    if text in {ui["chart"], "✨ Натальная карта", "✨ แผนภูมิดวงกำเนิด", "✨ Natal chart"}:
+    ui = UI[language_of(context)]
+    if text in {ui["chart"], "✨ Натальная карта", "✨ แผนภูมิดวงกำเนิด", "✨ Natal chart"}:
         await begin_chart(update, context)
         return
     if text in {ui["about"], "ℹ️ О проекте", "ℹ️ เกี่ยวกับ ASTRA", "ℹ️ About ASTRA"}:
