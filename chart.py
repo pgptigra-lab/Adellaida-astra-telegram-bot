@@ -531,12 +531,12 @@ def format_aspect_interpretations(result):
     return "\n".join(lines)
 
 def translate_chart_text(text, language):
-    """Translate a completed report using Google's public web translation endpoint.
+    """Translate a completed report with Google's free, unofficial endpoint.
 
-    This does not require an API key or paid account. It is an unofficial,
-    rate-limited endpoint, so it may occasionally be unavailable.
+    Preserve paragraph breaks and birth dates exactly; no paid API key is needed.
     """
     import json
+    import re
     import urllib.parse
     import urllib.request
 
@@ -544,6 +544,16 @@ def translate_chart_text(text, language):
     target = language_codes.get(language)
     if not target:
         return text
+
+    # Repair literal escaped newlines that may have entered older report strings.
+    text = text.replace("\r\n", "\n").replace("\\n", "\n")
+
+    # Protect numeric birth dates from being reformatted by the translator.
+    protected_dates = []
+    def protect_date(match):
+        protected_dates.append(match.group(0))
+        return f"ASTRADATEPLACEHOLDER{len(protected_dates) - 1}END"
+    text = re.sub(r"(?<!\d)\d{1,2}[./-]\d{1,2}[./-]\d{4}(?!\d)", protect_date, text)
 
     def split_text(value, limit=2800):
         chunks = []
@@ -586,4 +596,7 @@ def translate_chart_text(text, language):
             raise RuntimeError("The free translation service returned an empty result")
         translated_chunks.append(translated)
 
-    return "\n".join(translated_chunks)
+    result = "\n".join(translated_chunks)
+    for index, original_date in enumerate(protected_dates):
+        result = result.replace(f"ASTRADATEPLACEHOLDER{index}END", original_date)
+    return result.replace("\\n", "\n")
