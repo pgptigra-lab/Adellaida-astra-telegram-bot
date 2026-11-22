@@ -29,7 +29,7 @@ UI = {
     "ru": {
         "chart": "✨ Натальная карта", "about": "ℹ️ О проекте",
         "welcome": "✨ Добро пожаловать в ASTRA! Я могу рассчитать натальную карту по дате, времени и месту рождения. Выбери действие ниже.",
-        "prompt": "Пришли данные одним сообщением в таком формате:\\n\\nДата: 15.05.1989\\nВремя: 07:30\\nМесто: Кишинёв, Молдова\\n\\nУкажи местное время рождения. Если точное время неизвестно, полную карту с Асцендентом и домами рассчитать нельзя.",
+        "prompt": "Пришли данные одним сообщением в таком формате:\n\nДата: 15.05.1989\nВремя: 07:30\nМесто: Кишинёв, Молдова\n\nУкажи местное время рождения. Если точное время неизвестно, полную карту с Асцендентом и домами рассчитать нельзя.",
         "about_text": "ASTRA — астрологический проект для самопознания. Расчёты и трактовки носят развлекательный и рефлексивный характер, а не являются научным описанием личности или прогнозом.",
         "choose": "Выбери действие на клавиатуре ниже или введи /chart.",
         "cancel": "Ввод отменён. Когда будешь готов(а), выбери «Натальная карта».",
@@ -37,7 +37,7 @@ UI = {
     "th": {
         "chart": "✨ แผนภูมิดวงกำเนิด", "about": "ℹ️ เกี่ยวกับ ASTRA",
         "welcome": "✨ ยินดีต้อนรับสู่ ASTRA! ฉันสามารถคำนวณแผนภูมิดวงกำเนิดจากวัน เวลา และสถานที่เกิด กรุณาเลือกเมนูด้านล่าง",
-        "prompt": "ส่งข้อมูลทั้งหมดในข้อความเดียวตามรูปแบบนี้:\\n\\nDate: 15.05.1989\\nTime: 07:30\\nPlace: Bangkok, Thailand\\n\\nกรุณาระบุเวลาท้องถิ่น ณ สถานที่เกิด หากไม่ทราบเวลาเกิดที่แน่นอน จะไม่สามารถคำนวณลัคนาและเรือนชะตาได้",
+        "prompt": "ส่งข้อมูลทั้งหมดในข้อความเดียวตามรูปแบบนี้:\n\nDate: 15.05.1989\nTime: 07:30\nPlace: Bangkok, Thailand\n\nกรุณาระบุเวลาท้องถิ่น ณ สถานที่เกิด หากไม่ทราบเวลาเกิดที่แน่นอน จะไม่สามารถคำนวณลัคนาและเรือนชะตาได้",
         "about_text": "ASTRA เป็นโครงการโหราศาสตร์เพื่อการสำรวจตนเอง การตีความมีไว้เพื่อความบันเทิงและการไตร่ตรอง ไม่ใช่คำอธิบายบุคลิกภาพหรือคำทำนายที่ได้รับการพิสูจน์ทางวิทยาศาสตร์",
         "choose": "กรุณาเลือกเมนูด้านล่าง หรือพิมพ์ /chart",
         "cancel": "ยกเลิกการกรอกข้อมูลแล้ว หากพร้อม ให้เลือกเมนูแผนภูมิดวงกำเนิด",
@@ -45,7 +45,7 @@ UI = {
     "en": {
         "chart": "✨ Natal chart", "about": "ℹ️ About ASTRA",
         "welcome": "✨ Welcome to ASTRA! I can calculate a natal chart using your birth date, time, and place. Choose an option below.",
-        "prompt": "Send all details in one message using this format:\\n\\nDate: 15.05.1989\\nTime: 07:30\\nPlace: London, UK\\n\\nUse the local birth time. Without an exact birth time, the Ascendant and houses cannot be calculated.",
+        "prompt": "Send all details in one message using this format:\n\nDate: 15.05.1989\nTime: 07:30\nPlace: London, UK\n\nUse the local birth time. Without an exact birth time, the Ascendant and houses cannot be calculated.",
         "about_text": "ASTRA is an astrology project for self-reflection. Its interpretations are for entertainment and reflection, not scientifically validated descriptions of personality or predictions.",
         "choose": "Choose an option below or type /chart.",
         "cancel": "Input cancelled. When ready, choose Natal chart.",
@@ -226,31 +226,13 @@ def main():
     app.add_handler(CommandHandler("cancel", cancel))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
 
-    # Render free web services may sleep when idle. Telegram webhooks wake
-    # the service on the next update, but the first reply can be delayed.
-    port = int(os.environ.get("PORT", "10000"))
-    public_url = os.environ.get("RENDER_EXTERNAL_URL")
-    webhook_path = os.environ.get("WEBHOOK_PATH", "telegram").strip("/")
-    webhook_secret = os.environ.get("WEBHOOK_SECRET")
-
-    if not public_url:
-        raise RuntimeError(
-            "RENDER_EXTERNAL_URL is missing. Deploy this app as a Render Web Service."
-        )
-    if not webhook_secret:
-        raise RuntimeError("WEBHOOK_SECRET is missing. Set it in Render environment variables.")
-
-    webhook_url = f"{public_url.rstrip('/')}/{webhook_path}"
-    logger.info("Starting ASTRA webhook server on port %s", port)
-    app.run_webhook(
-        listen="0.0.0.0",
-        port=port,
-        url_path=webhook_path,
-        webhook_url=webhook_url,
-        secret_token=webhook_secret,
+    # Railway runs this service as a worker. Long polling does not require
+    # a public URL, webhook path, or Render-specific environment variables.
+    logger.info("Starting ASTRA Telegram bot using long polling")
+    app.run_polling(
         allowed_updates=Update.ALL_TYPES,
         drop_pending_updates=False,
-        bootstrap_retries=-1,
+        poll_interval=1.0,
     )
 
 
