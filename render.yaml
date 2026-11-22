@@ -6,9 +6,11 @@ services:
     buildCommand: pip install -r requirements.txt
     startCommand: python main.py
     envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.11
       - key: TELEGRAM_BOT_TOKEN
         sync: false
       - key: WEBHOOK_SECRET
-        sync: false
+        generateValue: true
       - key: WEBHOOK_PATH
         value: telegram
