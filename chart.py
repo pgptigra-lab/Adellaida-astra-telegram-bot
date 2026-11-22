@@ -531,53 +531,59 @@ def format_aspect_interpretations(result):
     return "\n".join(lines)
 
 def translate_chart_text(text, language):
-    """Translate a completed natal-chart report while preserving all calculated data."""
+    """Translate a completed report using Google's public web translation endpoint.
+
+    This does not require an API key or paid account. It is an unofficial,
+    rate-limited endpoint, so it may occasionally be unavailable.
+    """
     import json
-    import os
+    import urllib.parse
     import urllib.request
 
-    language_names = {"th": "Thai", "en": "English"}
-    target = language_names.get(language)
+    language_codes = {"th": "th", "en": "en"}
+    target = language_codes.get(language)
     if not target:
         return text
 
-    api_key = os.environ.get("OPENAI_API_KEY")
-    if not api_key:
-        raise RuntimeError("OPENAI_API_KEY is not configured")
+    def split_text(value, limit=2800):
+        chunks = []
+        current = ""
+        for paragraph in value.split("\\n"):
+            candidate = paragraph if not current else current + "\\n" + paragraph
+            if len(candidate) <= limit:
+                current = candidate
+                continue
+            if current:
+                chunks.append(current)
+                current = ""
+            while len(paragraph) > limit:
+                chunks.append(paragraph[:limit])
+                paragraph = paragraph[limit:]
+            current = paragraph
+        if current:
+            chunks.append(current)
+        return chunks
 
-    payload = {
-        "model": os.environ.get("OPENAI_TRANSLATION_MODEL", "gpt-4o-mini"),
-        "temperature": 0.1,
-        "max_tokens": 12000,
-        "messages": [
-            {
-                "role": "system",
-                "content": (
-                    f"Translate the user's complete ASTRA natal-chart report from Russian into natural, "
-                    f"fluent {target}. Translate every heading, label, sentence, interpretation, and disclaimer. "
-                    "Do not summarize, omit, add, or explain anything. Preserve the exact structure, line breaks, "
-                    "emoji, bullet points, all dates, times, degrees, aspect orbs, house numbers, and calculated "
-                    "values. Translate planet names, zodiac signs, aspect names, and astrology terminology into "
-                    f"standard {target} terminology. Keep the spelling of people's names and place names unchanged. "
-                    "Return only the translated report, with no introduction or comments."
-                ),
-            },
-            {"role": "user", "content": text},
-        ],
-    }
-    request = urllib.request.Request(
-        "https://api.openai.com/v1/chat/completions",
-        data=json.dumps(payload, ensure_ascii=False).encode("utf-8"),
-        headers={
-            "Authorization": f"Bearer {api_key}",
-            "Content-Type": "application/json",
-        },
-        method="POST",
-    )
-    with urllib.request.urlopen(request, timeout=90) as response:
-        result = json.loads(response.read().decode("utf-8"))
+    translated_chunks = []
+    for chunk in split_text(text):
+        params = urllib.parse.urlencode({
+            "client": "gtx",
+            "sl": "ru",
+            "tl": target,
+            "dt": "t",
+            "q": chunk,
+        })
+        request = urllib.request.Request(
+            "https://translate.googleapis.com/translate_a/single?" + params,
+            headers={"User-Agent": "Mozilla/5.0 ASTRA Telegram Bot"},
+        )
+        with urllib.request.urlopen(request, timeout=45) as response:
+            data = json.loads(response.read().decode("utf-8"))
+        translated = "".join(
+            segment[0] for segment in data[0] if segment and segment[0]
+        ).strip()
+        if not translated:
+            raise RuntimeError("The free translation service returned an empty result")
+        translated_chunks.append(translated)
 
-    translated = result["choices"][0]["message"]["content"].strip()
-    if not translated:
-        raise RuntimeError("The translation service returned an empty result")
-    return translated
+    return "\\n".join(translated_chunks)
