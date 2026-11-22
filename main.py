@@ -201,14 +201,14 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         answer += format_aspect_interpretations(result)
         answer += format_psychological_portrait(result)
         for start in range(0, len(answer), 3900):
-            await update.message.reply_text(answer[start:start + 3900], reply_markup=MENU)
+            await update.message.reply_text(answer[start:start + 3900], reply_markup=menu_for(context))
     except Exception as exc:
         logger.exception("Natal chart calculation failed")
         context.user_data["awaiting_birth_details"] = True
         await update.message.reply_text(
             f"Не получилось рассчитать карту: {exc}\n"
             "Проверь написание города и попробуй ещё раз. Для отмены введи /cancel.",
-            reply_markup=MENU,
+            reply_markup=menu_for(context),
         )
     finally:
         try:
