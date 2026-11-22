@@ -548,8 +548,8 @@ def translate_chart_text(text, language):
     def split_text(value, limit=2800):
         chunks = []
         current = ""
-        for paragraph in value.split("\\n"):
-            candidate = paragraph if not current else current + "\\n" + paragraph
+        for paragraph in value.split("\n"):
+            candidate = paragraph if not current else current + "\n" + paragraph
             if len(candidate) <= limit:
                 current = candidate
                 continue
@@ -586,4 +586,4 @@ def translate_chart_text(text, language):
             raise RuntimeError("The free translation service returned an empty result")
         translated_chunks.append(translated)
 
-    return "\\n".join(translated_chunks)
+    return "\n".join(translated_chunks)
