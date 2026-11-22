@@ -102,7 +102,9 @@ async def select_language(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "en": "🇬🇧 Welcome to ASTRA! English selected.",
     }
 
-    await query.edit_message_text(messages[language])async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await query.edit_message_text(messages[language])
+    
+    async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         "Команды:\n/start — начать заново\n/chart — создать натальную карту\n"
         "/cancel — отменить ввод\n\n"
