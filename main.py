@@ -89,7 +89,7 @@ def split_telegram_message(value, limit=3900):
     chunks = []
     current = ""
     for paragraph in value.splitlines():
-        candidate = paragraph if not current else current + "\\n" + paragraph
+        candidate = paragraph if not current else current + "\n" + paragraph
         if len(candidate) <= limit:
             current = candidate
             continue
