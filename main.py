@@ -253,7 +253,7 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         answer += format_psychological_portrait(result)
         if language != "ru":
             try:
-                answer = await asyncio.to_thread(translate_chart_text, answer, language)
+                answer = await asyncio.to_thread(translate_chart_text, answer, language, birth_date)
             except Exception:
                 logger.exception("Natal chart translation failed")
                 context.user_data["awaiting_birth_details"] = True
