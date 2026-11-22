@@ -205,8 +205,33 @@ def main():
     app.add_handler(CommandHandler("chart", begin_chart))
     app.add_handler(CommandHandler("cancel", cancel))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
-    print("ASTRA bot is running...")
-    app.run_polling(drop_pending_updates=True)
+
+    # Render free web services may sleep when idle. Telegram webhooks wake
+    # the service on the next update, but the first reply can be delayed.
+    port = int(os.environ.get("PORT", "10000"))
+    public_url = os.environ.get("RENDER_EXTERNAL_URL")
+    webhook_path = os.environ.get("WEBHOOK_PATH", "telegram").strip("/")
+    webhook_secret = os.environ.get("WEBHOOK_SECRET")
+
+    if not public_url:
+        raise RuntimeError(
+            "RENDER_EXTERNAL_URL is missing. Deploy this app as a Render Web Service."
+        )
+    if not webhook_secret:
+        raise RuntimeError("WEBHOOK_SECRET is missing. Set it in Render environment variables.")
+
+    webhook_url = f"{public_url.rstrip('/')}/{webhook_path}"
+    logger.info("Starting ASTRA webhook server on port %s", port)
+    app.run_webhook(
+        listen="0.0.0.0",
+        port=port,
+        url_path=webhook_path,
+        webhook_url=webhook_url,
+        secret_token=webhook_secret,
+        allowed_updates=Update.ALL_TYPES,
+        drop_pending_updates=False,
+        bootstrap_retries=-1,
+    )
 
 
 if __name__ == "__main__":
