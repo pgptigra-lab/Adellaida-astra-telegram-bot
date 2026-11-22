@@ -189,7 +189,8 @@ async def about(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = (update.message.text or "").strip()
-    ui = UI[language_of(context)]
+    language = language_of(context)
+    ui = UI[language]
     if text in {ui["chart"], "✨ Натальная карта", "✨ แผนภูมิดวงกำเนิด", "✨ Natal chart"}:
         await begin_chart(update, context)
         return
