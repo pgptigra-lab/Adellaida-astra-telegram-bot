@@ -24,7 +24,40 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 BOT_TOKEN = os.environ["TELEGRAM_BOT_TOKEN"]
-MENU = ReplyKeyboardMarkup([["✨ Натальная карта", "ℹ️ О проекте"]], resize_keyboard=True)
+
+UI = {
+    "ru": {
+        "chart": "✨ Натальная карта", "about": "ℹ️ О проекте",
+        "welcome": "✨ Добро пожаловать в ASTRA! Я могу рассчитать натальную карту по дате, времени и месту рождения. Выбери действие ниже.",
+        "prompt": "Пришли данные одним сообщением в таком формате:\\n\\nДата: 15.05.1989\\nВремя: 07:30\\nМесто: Кишинёв, Молдова\\n\\nУкажи местное время рождения. Если точное время неизвестно, полную карту с Асцендентом и домами рассчитать нельзя.",
+        "about_text": "ASTRA — астрологический проект для самопознания. Расчёты и трактовки носят развлекательный и рефлексивный характер, а не являются научным описанием личности или прогнозом.",
+        "choose": ui["choose"],
+        "cancel": "Ввод отменён. Когда будешь готов(а), выбери «Натальная карта».",
+    },
+    "th": {
+        "chart": "✨ แผนภูมิดวงกำเนิด", "about": "ℹ️ เกี่ยวกับ ASTRA",
+        "welcome": "✨ ยินดีต้อนรับสู่ ASTRA! ฉันสามารถคำนวณแผนภูมิดวงกำเนิดจากวัน เวลา และสถานที่เกิด กรุณาเลือกเมนูด้านล่าง",
+        "prompt": "ส่งข้อมูลทั้งหมดในข้อความเดียวตามรูปแบบนี้:\\n\\nDate: 15.05.1989\\nTime: 07:30\\nPlace: Bangkok, Thailand\\n\\nกรุณาระบุเวลาท้องถิ่น ณ สถานที่เกิด หากไม่ทราบเวลาเกิดที่แน่นอน จะไม่สามารถคำนวณลัคนาและเรือนชะตาได้",
+        "about_text": "ASTRA เป็นโครงการโหราศาสตร์เพื่อการสำรวจตนเอง การตีความมีไว้เพื่อความบันเทิงและการไตร่ตรอง ไม่ใช่คำอธิบายบุคลิกภาพหรือคำทำนายที่ได้รับการพิสูจน์ทางวิทยาศาสตร์",
+        "choose": "กรุณาเลือกเมนูด้านล่าง หรือพิมพ์ /chart",
+        "cancel": "ยกเลิกการกรอกข้อมูลแล้ว หากพร้อม ให้เลือกเมนูแผนภูมิดวงกำเนิด",
+    },
+    "en": {
+        "chart": "✨ Natal chart", "about": "ℹ️ About ASTRA",
+        "welcome": "✨ Welcome to ASTRA! I can calculate a natal chart using your birth date, time, and place. Choose an option below.",
+        "prompt": "Send all details in one message using this format:\\n\\nDate: 15.05.1989\\nTime: 07:30\\nPlace: London, UK\\n\\nUse the local birth time. Without an exact birth time, the Ascendant and houses cannot be calculated.",
+        "about_text": "ASTRA is an astrology project for self-reflection. Its interpretations are for entertainment and reflection, not scientifically validated descriptions of personality or predictions.",
+        "choose": "Choose an option below or type /chart.",
+        "cancel": "Input cancelled. When ready, choose Natal chart.",
+    },
+}
+
+def language_of(context):
+    return context.user_data.get("language", "ru")
+
+def menu_for(context):
+    ui = UI[language_of(context)]
+    return ReplyKeyboardMarkup([[ui["chart"], ui["about"]]], resize_keyboard=True)
 
 WELCOME = (
     "✨ Добро пожаловать в ASTRA — пространство астрологии и самопознания.\n\n"
@@ -68,7 +101,7 @@ def parse_birth_place(message):
     if not match:
         return None
     place = match.group(1).strip()
-    if place.lower() in {"не знаю", "неизвестно", "unknown", "не указано"}:
+    if place.lower() in {"не знаю", "неизвестно", "unknown", "не указано", "ไม่ทราบ", "ไม่รู้"}:
         return None
     return place[:160]
 
@@ -103,6 +136,7 @@ async def select_language(update: Update, context: ContextTypes.DEFAULT_TYPE):
     }
 
     await query.edit_message_text(messages[language])
+    await query.message.reply_text(UI[language]["welcome"], reply_markup=menu_for(context))
     
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
@@ -116,7 +150,7 @@ async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data.clear()
     await update.message.reply_text(
         "Ввод отменён. Когда будешь готов(а), нажми «Натальная карта».",
-        reply_markup=MENU,
+        reply_markup=menu_for(context),
     )
 
 
@@ -142,10 +176,10 @@ async def about(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = (update.message.text or "").strip()
-    if text == "✨ Натальная карта":
+    ui = UI[language_of(context)]\n    if text in {ui["chart"], "✨ Натальная карта", "✨ แผนภูมิดวงกำเนิด", "✨ Natal chart"}:
         await begin_chart(update, context)
         return
-    if text == "ℹ️ О проекте":
+    if text in {ui["about"], "ℹ️ О проекте", "ℹ️ เกี่ยวกับ ASTRA", "ℹ️ About ASTRA"}:
         await about(update, context)
         return
     if not context.user_data.get("awaiting_birth_details"):
