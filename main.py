@@ -84,6 +84,29 @@ UI = {
     },
 }
 
+def split_telegram_message(value, limit=3900):
+    """Split long reports at paragraph boundaries without cutting words."""
+    chunks = []
+    current = ""
+    for paragraph in value.splitlines():
+        candidate = paragraph if not current else current + "\\n" + paragraph
+        if len(candidate) <= limit:
+            current = candidate
+            continue
+        if current:
+            chunks.append(current)
+            current = ""
+        while len(paragraph) > limit:
+            cut = paragraph.rfind(" ", 0, limit + 1)
+            if cut < limit // 2:
+                cut = limit
+            chunks.append(paragraph[:cut].rstrip())
+            paragraph = paragraph[cut:].lstrip()
+        current = paragraph
+    if current:
+        chunks.append(current)
+    return chunks
+
 def language_of(context):
     return context.user_data.get("language", "ru")
 
@@ -238,8 +261,8 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     ui["translation_error"], reply_markup=menu_for(context)
                 )
                 return
-        for start in range(0, len(answer), 3900):
-            await update.message.reply_text(answer[start:start + 3900], reply_markup=menu_for(context))
+        for part in split_telegram_message(answer):
+            await update.message.reply_text(part, reply_markup=menu_for(context))
     except Exception as exc:
         logger.exception("Natal chart calculation failed")
         context.user_data["awaiting_birth_details"] = True
