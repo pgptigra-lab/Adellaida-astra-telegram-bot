@@ -530,11 +530,11 @@ def format_aspect_interpretations(result):
     ])
     return "\n".join(lines)
 
-def translate_chart_text(text, language):
-    """Translate a completed report with Google's free, unofficial endpoint.
+def translate_chart_text(text, language, birth_date=None):
+    """Translate a completed report using Google's free, unofficial endpoint.
 
-    Preserve paragraph breaks and the original birth-date line exactly.
-    No paid API key is needed.
+    Keep the numeric birth date intact and restore it if an older placeholder
+    somehow reaches this function. No paid API key is needed.
     """
     import json
     import re
@@ -547,16 +547,23 @@ def translate_chart_text(text, language):
 
     text = text.replace("\r\n", "\n").replace("\\n", "\n")
 
-    # Keep the complete birth-date line out of machine translation.
+    # Recover dates from any legacy placeholder using the original input.
+    if birth_date is not None:
+        original_date = birth_date.strftime("%d.%m.%Y")
+        text = re.sub(r"ASTRA?DATEPLACEHOLDER\d+END", original_date, text)
+
+    # Translate the date label, but never send the actual numeric date to MT.
     date_line_pattern = re.compile(
-        r"^[^\n]*?\d{1,2}[./-]\d{1,2}[./-]\d{4}[^\n]*$",
+        r"^([^\n]*?)(\d{1,2}[./-]\d{1,2}[./-]\d{4})([^\n]*)$",
         re.MULTILINE,
     )
     pieces = []
     last = 0
     for match in date_line_pattern.finditer(text):
         pieces.append(("translate", text[last:match.start()]))
-        pieces.append(("keep", match.group(0)))
+        pieces.append(("translate", match.group(1)))
+        pieces.append(("keep", match.group(2)))
+        pieces.append(("translate", match.group(3)))
         last = match.end()
     pieces.append(("translate", text[last:]))
 
@@ -607,7 +614,4 @@ def translate_chart_text(text, language):
             output.append(value)
         else:
             output.extend(translate_chunk(chunk) for chunk in split_text(value))
-    result = "".join(output).replace("\\n", "\n")
-    # Remove any legacy placeholder that may remain in previously generated text.
-    result = re.sub(r"ASTRA?DATEPLACEHOLDER\d+END", "", result)
-    return result
+    return "".join(output).replace("\\n", "\n")
