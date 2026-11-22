@@ -147,32 +147,17 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    language = language_of(context)
     context.user_data.clear()
-    await update.message.reply_text(
-        "Ввод отменён. Когда будешь готов(а), нажми «Натальная карта».",
-        reply_markup=menu_for(context),
-    )
-
+    context.user_data["language"] = language
+    await update.message.reply_text(UI[language]["cancel"], reply_markup=menu_for(context))
 
 async def begin_chart(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data["awaiting_birth_details"] = True
-    await update.message.reply_text(
-        "Пришли данные одним сообщением в таком формате:\n\n"
-        "Дата: 15.05.1989\n"
-        "Время: 07:30\n"
-        "Место: Кишинёв, Молдова\n\n"
-        "Укажи местное время рождения. Если точное время неизвестно, полную карту "
-        "с Асцендентом и домами рассчитать нельзя. Не отправляй личные документы или адрес."
-    )
-
+    await update.message.reply_text(UI[language_of(context)]["prompt"])
 
 async def about(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text(
-        "ASTRA — астрологический проект для самопознания. Расчёты показывают положения "
-        "небесных тел; астрологические трактовки носят развлекательный и рефлексивный "
-        "характер и не являются научно подтверждённым описанием личности или прогнозом."
-    )
-
+    await update.message.reply_text(UI[language_of(context)]["about_text"], reply_markup=menu_for(context))
 
 async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = (update.message.text or "").strip()
