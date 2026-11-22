@@ -7,7 +7,7 @@ from datetime import datetime, time
 from telegram import Update, ReplyKeyboardMarkup, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, MessageHandler, CallbackQueryHandler, ContextTypes, filters
 
-from chart import calculate_natal_chart, format_natal_chart, format_interpretations, format_aspect_interpretations, format_psychological_portrait
+from chart import calculate_natal_chart, format_natal_chart, format_interpretations, format_aspect_interpretations, format_psychological_portrait, translate_chart_text
 
 LANGUAGES = {
     "ru": "🇷🇺 Русский",
@@ -33,6 +33,16 @@ UI = {
         "about_text": "ASTRA — астрологический проект для самопознания. Расчёты и трактовки носят развлекательный и рефлексивный характер, а не являются научным описанием личности или прогнозом.",
         "choose": "Выбери действие на клавиатуре ниже или введи /chart.",
         "cancel": "Ввод отменён. Когда будешь готов(а), выбери «Натальная карта».",
+        "help": "Команды:\n/start — начать заново\n/chart — создать натальную карту\n/cancel — отменить ввод\n\nДля полной карты нужны дата, точное местное время и город/страна рождения.",
+        "too_long": "Сообщение слишком длинное. Пришли только дату, время и место рождения.",
+        "missing_date": "дату (например, 15.05.1989)",
+        "missing_time": "время (например, 07:30)",
+        "missing_place": "город и страну",
+        "missing_prefix": "Не хватает или не удалось распознать: ",
+        "missing_suffix": ".\nПришли все три пункта одним сообщением. Для отмены введи /cancel.",
+        "calculating": "🔭 Рассчитываю натальную карту. Это может занять несколько секунд.",
+        "translation_error": "Не удалось перевести результат. Проверь доступность API и попробуй ещё раз позже.",
+        "chart_error": "Не получилось рассчитать карту. Проверь написание города и попробуй ещё раз. Для отмены введи /cancel.",
     },
     "th": {
         "chart": "✨ แผนภูมิดวงกำเนิด", "about": "ℹ️ เกี่ยวกับ ASTRA",
@@ -41,6 +51,16 @@ UI = {
         "about_text": "ASTRA เป็นโครงการโหราศาสตร์เพื่อการสำรวจตนเอง การตีความมีไว้เพื่อความบันเทิงและการไตร่ตรอง ไม่ใช่คำอธิบายบุคลิกภาพหรือคำทำนายที่ได้รับการพิสูจน์ทางวิทยาศาสตร์",
         "choose": "กรุณาเลือกเมนูด้านล่าง หรือพิมพ์ /chart",
         "cancel": "ยกเลิกการกรอกข้อมูลแล้ว หากพร้อม ให้เลือกเมนูแผนภูมิดวงกำเนิด",
+        "help": "คำสั่ง:\n/start — เริ่มต้นใหม่\n/chart — สร้างแผนภูมิดวงกำเนิด\n/cancel — ยกเลิกการกรอกข้อมูล\n\nต้องใช้วันเกิด เวลาเกิดตามเวลาท้องถิ่นที่แน่นอน และเมือง/ประเทศที่เกิด",
+        "too_long": "ข้อความยาวเกินไป กรุณาส่งเฉพาะวันเกิด เวลาเกิด และสถานที่เกิด",
+        "missing_date": "วันเดือนปีเกิด (ตัวอย่าง 15.05.1989)",
+        "missing_time": "เวลาเกิด (ตัวอย่าง 07:30)",
+        "missing_place": "เมืองและประเทศที่เกิด",
+        "missing_prefix": "ข้อมูลต่อไปนี้ยังไม่ครบหรืออ่านไม่สำเร็จ: ",
+        "missing_suffix": "\nกรุณาส่งข้อมูลทั้งสามรายการในข้อความเดียว หากต้องการยกเลิก พิมพ์ /cancel",
+        "calculating": "🔭 กำลังคำนวณแผนภูมิดวงกำเนิด โปรดรอสักครู่",
+        "translation_error": "ขออภัย ไม่สามารถแปลผลลัพธ์ได้ในขณะนี้ กรุณาลองใหม่อีกครั้งภายหลัง",
+        "chart_error": "ขออภัย ไม่สามารถคำนวณแผนภูมิได้ กรุณาตรวจสอบชื่อเมืองแล้วลองอีกครั้ง หากต้องการยกเลิก พิมพ์ /cancel",
     },
     "en": {
         "chart": "✨ Natal chart", "about": "ℹ️ About ASTRA",
@@ -49,6 +69,16 @@ UI = {
         "about_text": "ASTRA is an astrology project for self-reflection. Its interpretations are for entertainment and reflection, not scientifically validated descriptions of personality or predictions.",
         "choose": "Choose an option below or type /chart.",
         "cancel": "Input cancelled. When ready, choose Natal chart.",
+        "help": "Commands:\n/start — start again\n/chart — create a natal chart\n/cancel — cancel input\n\nA full chart requires your birth date, exact local birth time, and city/country of birth.",
+        "too_long": "Your message is too long. Please send only your birth date, time, and place.",
+        "missing_date": "birth date (for example, 15.05.1989)",
+        "missing_time": "birth time (for example, 07:30)",
+        "missing_place": "birth city and country",
+        "missing_prefix": "Missing or unrecognized information: ",
+        "missing_suffix": "\nPlease send all three details in one message. Type /cancel to stop.",
+        "calculating": "🔭 Calculating your natal chart. This may take a few seconds.",
+        "translation_error": "Sorry, I couldn't translate the result right now. Please try again later.",
+        "chart_error": "I couldn't calculate the chart. Please check the spelling of the city and try again. Type /cancel to stop.",
     },
 }
 
@@ -139,11 +169,7 @@ async def select_language(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await query.message.reply_text(UI[language]["welcome"], reply_markup=menu_for(context))
     
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text(
-        "Команды:\n/start — начать заново\n/chart — создать натальную карту\n"
-        "/cancel — отменить ввод\n\n"
-        "Для полной карты нужны дата, точное местное время и город/страна рождения."
-    )
+    await update.message.reply_text(UI[language_of(context)]["help"])
 
 
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -172,7 +198,7 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(ui["choose"], reply_markup=menu_for(context))
         return
     if len(text) > 1200:
-        await update.message.reply_text("Сообщение слишком длинное. Пришли только дату, время и место рождения.")
+        await update.message.reply_text(ui["too_long"])
         return
 
     birth_date = parse_birth_date(text)
@@ -180,35 +206,42 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     birth_place = parse_birth_place(text)
     missing = []
     if birth_date is None:
-        missing.append("дату (например, 15.05.1989)")
+        missing.append(ui["missing_date"])
     if birth_time is None:
-        missing.append("время (например, 07:30)")
+        missing.append(ui["missing_time"])
     if birth_place is None:
-        missing.append("город и страну")
+        missing.append(ui["missing_place"])
     if missing:
         await update.message.reply_text(
-            "Не хватает или не удалось распознать: " + ", ".join(missing) +
-            ".\nПришли все три пункта одним сообщением. Для отмены введи /cancel."
+            ui["missing_prefix"] + ", ".join(missing) + ui["missing_suffix"]
         )
         return
 
     context.user_data["awaiting_birth_details"] = False
-    status = await update.message.reply_text("🔭 Рассчитываю натальную карту. Это может занять несколько секунд.")
+    status = await update.message.reply_text(ui["calculating"])
     try:
         result = await asyncio.to_thread(calculate_natal_chart, birth_date, birth_time, birth_place)
         answer = format_natal_chart(result, birth_date, birth_time, birth_place)
         answer += format_interpretations(result)
         answer += format_aspect_interpretations(result)
         answer += format_psychological_portrait(result)
+        if language != "ru":
+            try:
+                answer = await asyncio.to_thread(translate_chart_text, answer, language)
+            except Exception:
+                logger.exception("Natal chart translation failed")
+                context.user_data["awaiting_birth_details"] = True
+                await update.message.reply_text(
+                    ui["translation_error"], reply_markup=menu_for(context)
+                )
+                return
         for start in range(0, len(answer), 3900):
             await update.message.reply_text(answer[start:start + 3900], reply_markup=menu_for(context))
     except Exception as exc:
         logger.exception("Natal chart calculation failed")
         context.user_data["awaiting_birth_details"] = True
         await update.message.reply_text(
-            f"Не получилось рассчитать карту: {exc}\n"
-            "Проверь написание города и попробуй ещё раз. Для отмены введи /cancel.",
-            reply_markup=menu_for(context),
+            ui["chart_error"], reply_markup=menu_for(context)
         )
     finally:
         try:
