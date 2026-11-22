@@ -21,6 +21,8 @@ TEXTS = {
     "en": "Please choose your language:",
 }
 logging.basicConfig(level=logging.INFO)
+# Prevent httpx request URLs from exposing the Telegram bot token in Railway logs.
+logging.getLogger("httpx").setLevel(logging.WARNING)
 logger = logging.getLogger(__name__)
 
 BOT_TOKEN = os.environ["TELEGRAM_BOT_TOKEN"]
