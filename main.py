@@ -31,7 +31,7 @@ UI = {
         "welcome": "✨ Добро пожаловать в ASTRA! Я могу рассчитать натальную карту по дате, времени и месту рождения. Выбери действие ниже.",
         "prompt": "Пришли данные одним сообщением в таком формате:\\n\\nДата: 15.05.1989\\nВремя: 07:30\\nМесто: Кишинёв, Молдова\\n\\nУкажи местное время рождения. Если точное время неизвестно, полную карту с Асцендентом и домами рассчитать нельзя.",
         "about_text": "ASTRA — астрологический проект для самопознания. Расчёты и трактовки носят развлекательный и рефлексивный характер, а не являются научным описанием личности или прогнозом.",
-        "choose": ui["choose"],
+        "choose": "Выбери действие на клавиатуре ниже или введи /chart.",
         "cancel": "Ввод отменён. Когда будешь готов(а), выбери «Натальная карта».",
     },
     "th": {
@@ -183,7 +183,7 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await about(update, context)
         return
     if not context.user_data.get("awaiting_birth_details"):
-        await update.message.reply_text("Выбери действие на клавиатуре ниже или введи /chart.", reply_markup=MENU)
+        await update.message.reply_text(ui["choose"], reply_markup=menu_for(context))
         return
     if len(text) > 1200:
         await update.message.reply_text("Сообщение слишком длинное. Пришли только дату, время и место рождения.")
